@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Utilities Toolbox</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background-color: #f4f4f9; 
+            margin: 0; 
+            padding: 2rem; 
+        }
+        h1 { 
+            text-align: center; 
+            color: #333; 
+            margin-bottom: 2rem;
+        }
+        .container { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 1.5rem; 
+            max-width: 800px; 
+            margin: 0 auto; 
+        }
+        .section { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .section h2 { 
+            margin-top: 0; 
+            color: #444; 
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        .section p { color: #666; margin-bottom: 1.5rem; }
+        .form-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        input[type="file"], input[type="password"] {
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            flex: 1;
+        }
+        button { background: #007bff; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        button:hover { background: #0056b3; }
+        a.back { display: inline-block; margin-bottom: 1rem; text-decoration: none; color: #007bff; font-weight: 500;}
+        a.back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">&larr; Back to Home</a>
+        <h1>PDF Utility Toolbox</h1>
+        
+        <!-- PDF Creator Section -->
+        <div class="section" id="pdf-creator">
+            <h2>Create PDF</h2>
+            <p>Convert your text into a polished PDF document.</p>
+            <div class="form-group" style="flex-direction: column; align-items: stretch;">
+                <textarea id="text-to-pdf" rows="6" placeholder="Enter text to convert to PDF..." style="padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
+                <button onclick="createPDF()">Create PDF</button>
+            </div>
+        </div>
+
+        <!-- PDF Encryption Section -->
+        <div class="section" id="pdf-encryption">
+            <h2>Encrypt PDF</h2>
+            <p>Secure your PDF files by adding a password to restrict unauthorized access.</p>
+            <div class="form-group">
+                <input type="file" id="pdf-to-encrypt" accept=".pdf" />
+                <input type="password" id="encrypt-password" placeholder="Set a password" />
+                <button onclick="encryptPDF()">Encrypt PDF</button>
+            </div>
+        </div>
+
+        <!-- PDF Decryption Section -->
+        <div class="section" id="pdf-decryption">
+            <h2>Decrypt PDF</h2>
+            <p>Unlock and remove password protection from your PDF files.</p>
+            <div class="form-group">
+                <input type="file" id="pdf-to-decrypt" accept=".pdf" />
+                <input type="password" id="decrypt-password" placeholder="Enter current password" />
+                <button onclick="decryptPDF()">Decrypt PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- jsPDF for PDF Creation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- pdf-lib for PDF Manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+    <script>
+        // Utility to trigger a file download from a byte array
+        function downloadBlob(bytes, filename, contentType) {
+            const blob = new Blob([bytes], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // 1. PDF Creation Functionality
+        function createPDF() {
+            const text = document.getElementById('text-to-pdf').value;
+            if (!text.trim()) {
+                alert('Please enter some text to generate the PDF.');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Word-wrap the text to fit within standard PDF page width
+            const splitText = doc.splitTextToSize(text, 180);
+            doc.text(splitText, 15, 20);
+            doc.save('generated-document.pdf');
+        }
+
+        // 2. PDF Encryption Functionality
+        async function encryptPDF() {
+            const fileInput = document.getElementById('pdf-to-encrypt');
+            const password = document.getElementById('encrypt-password').value;
+            
+            if (!fileInput.files.length || !password) {
+                alert('Please select a PDF file and enter a password.');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const arrayBuffer = await file.arrayBuffer();
+            
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                const pdfBytes = await pdfDoc.save({
+                    userPassword: password,
+                    ownerPassword: password,
+                });
+                downloadBlob(pdfBytes, `encrypted_${file.name}`, 'application/pdf');
+            } catch (e) {
+                console.error(e);
+                alert('Error encrypting PDF. Please ensure the file is valid and not already encrypted.');
+            }
+        }
+
+        // 3. PDF Decryption Functionality
+        async function decryptPDF() {
+            const fileInput = document.getElementById('pdf-to-decrypt');
+            const password = document.getElementById('decrypt-password').value;
+            
+            if (!fileInput.files.length || !password) {
+                alert('Please select an encrypted PDF file and enter its password.');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const arrayBuffer = await file.arrayBuffer();
+            
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { password: password });
+                const pdfBytes = await pdfDoc.save();
+                downloadBlob(pdfBytes, `decrypted_${file.name}`, 'application/pdf');
+            } catch (e) {
+                console.error(e);
+                alert('Error decrypting PDF. The password may be incorrect or the file is corrupted.');
+            }
+        }
+    </script>
+</body>
+</html>

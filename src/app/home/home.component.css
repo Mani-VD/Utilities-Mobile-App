@@ -1,0 +1,33 @@
+ion-toolbar {
+  --background: #21914c;
+  --color: #ffffff;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.utility-card {
+  cursor: pointer;
+  transition: transform 0.2s;
+  width: 100%;
+  max-width: 300px;
+}
+
+.utility-card:hover {
+  transform: translateY(-5px);
+}
+
+.icon {
+  color: var(--ion-color-danger, #eb445a);
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-weight: 600;
+  margin: 0;
+  color: var(--ion-color-dark, #222428);
+}

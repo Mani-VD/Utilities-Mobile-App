@@ -1,0 +1,34 @@
+<ion-header>
+  <ion-toolbar style="--background: #21914c; --color: white;">
+    <ion-title>
+      Utilities Home
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-grid>
+    <ion-row class="ion-justify-content-center">
+      <ion-col size="auto">
+        <ion-card routerLink="pdf-utility" class="ion-activatable ripple-parent"
+          style="cursor: pointer; text-align: center; padding: 2rem; width: 250px;">
+          <ion-icon name="document-text" style="font-size: 80px; color: #21914c;"></ion-icon>
+          <ion-card-header>
+            <ion-card-title>PDF Utilities</ion-card-title>
+          </ion-card-header>
+          <ion-ripple-effect></ion-ripple-effect>
+        </ion-card>
+      </ion-col>
+      <ion-col size="auto">
+        <ion-card routerLink="image-utility" class="ion-activatable ripple-parent"
+          style="cursor: pointer; text-align: center; padding: 2rem; width: 250px;">
+          <ion-icon name="image" style="font-size: 80px; color: #21914c;"></ion-icon>
+          <ion-card-header>
+            <ion-card-title>Image Utilities</ion-card-title>
+          </ion-card-header>
+          <ion-ripple-effect></ion-ripple-effect>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

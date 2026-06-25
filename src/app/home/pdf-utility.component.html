@@ -1,0 +1,183 @@
+<ion-header>
+  <ion-toolbar style="background: #21914c; --color: white;">
+    <ion-buttons slot="start">
+      <ion-back-button text="Back" style="--color: white;"></ion-back-button>
+    </ion-buttons>
+    <ion-title>PDF Utility Toolbox</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="modern-container">
+    <nav class="tabs">
+      <button class="tab-btn" [class.active]="activeTab === 'create'" (click)="setActiveTab('create')"
+        title="Create PDF">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'scan'" (click)="setActiveTab('scan')"
+        title="Scan Document">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+          <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+          <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+          <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'encrypt'" (click)="setActiveTab('encrypt')"
+        title="Encrypt PDF">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'decrypt'" (click)="setActiveTab('decrypt')"
+        title="Decrypt PDF">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+        </svg>
+      </button>
+    </nav>
+
+    <main class="content-area">
+      <!-- PDF Creator Section -->
+      <section [hidden]="activeTab !== 'create'" class="card fade-in">
+        <div class="card-header">
+          <h2>Create PDF</h2>
+          <p>Convert your text and images into a polished PDF document.</p>
+        </div>
+        <div class="card-body">
+          <div class="editor-group">
+            <label>Document Content</label>
+            <div class="editor-container">
+              <div class="editor-toolbar">
+                <button class="icon-btn" [class.active]="activeStyles.bold" title="Bold"
+                  (mousedown)="formatDoc($event, 'bold')"><b>B</b></button>
+                <button class="icon-btn" [class.active]="activeStyles.italic" title="Italic"
+                  (mousedown)="formatDoc($event, 'italic')"><i>I</i></button>
+                <button class="icon-btn" [class.active]="activeStyles.underline" title="Underline"
+                  (mousedown)="formatDoc($event, 'underline')"><u>U</u></button>
+
+                <div class="toolbar-divider"></div>
+
+                <button class="icon-btn" [class.active]="activeStyles.h1" title="Heading 1"
+                  (mousedown)="formatDoc($event, 'formatBlock', 'H1')"><b>H1</b></button>
+                <button class="icon-btn" [class.active]="activeStyles.h2" title="Heading 2"
+                  (mousedown)="formatDoc($event, 'formatBlock', 'H2')"><b>H2</b></button>
+                <button class="icon-btn" title="Bulleted List" (mousedown)="formatDoc($event, 'insertUnorderedList')">•
+                  List</button>
+
+                <div class="toolbar-divider"></div>
+
+                <button class="icon-btn" title="Insert Image" (mousedown)="$event.preventDefault(); fileInput.click()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  Image
+                </button>
+                <input type="file" #fileInput accept="image/*" style="display: none" (change)="insertImage($event)" />
+              </div>
+              <div #editor contenteditable="true" class="rich-text-editor"
+                placeholder="Type or paste your text and images here..." (keyup)="checkStyles()"
+                (mouseup)="checkStyles()"></div>
+            </div>
+          </div>
+          <button class="primary-btn" (click)="generatePDF()">Generate PDF</button>
+        </div>
+      </section>
+
+      <!-- PDF Scan Section -->
+      <section [hidden]="activeTab !== 'scan'" class="card fade-in">
+        <div class="card-header">
+          <h2>Scan to PDF</h2>
+          <p>Use your camera to scan documents or select images to save them as a PDF.</p>
+        </div>
+        <div class="card-body">
+          <div class="editor-group">
+            <label>Capture / Select Images</label>
+            <div class="editor-container"
+              style="padding: 15px; text-align: center; border: 2px dashed #ccc; border-radius: 8px;">
+              <button class="primary-btn" (click)="startDocumentScan()">
+                <svg style="vertical-align: middle; margin-right: 5px;" xmlns="http://www.w3.org/2000/svg" width="18"
+                  height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                Scan Document
+              </button>
+              <input type="file" #scanInput accept="image/*" capture="environment" multiple style="display: none"
+                (change)="onScanImages($event)" />
+            </div>
+          </div>
+          <div class="scanned-preview" *ngIf="scannedImages.length > 0" style="margin-top: 20px;">
+            <label>Preview</label>
+            <div class="image-grid" style="display: flex; gap: 15px; overflow-x: auto; padding: 10px 0;">
+              <div class="image-thumbnail" *ngFor="let img of scannedImages; let i = index"
+                style="position: relative; flex-shrink: 0;">
+                <img [src]="img"
+                  style="height: 120px; width: auto; object-fit: cover; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />
+                <button class="remove-btn" (click)="removeScannedImage(i)" title="Remove Image"
+                  style="position: absolute; top: -8px; right: -8px; background: #ff4d4f; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1;">&times;</button>
+              </div>
+            </div>
+          </div>
+          <button class="primary-btn" style="margin-top: 20px;" [disabled]="scannedImages.length === 0"
+            (click)="generateScannedPDF()">Generate PDF</button>
+        </div>
+      </section>
+
+      <!-- PDF Encryption Section -->
+      <section [hidden]="activeTab !== 'encrypt'" class="card fade-in">
+        <div class="card-header">
+          <h2>Encrypt PDF</h2>
+          <p>Secure your PDF files by adding a password to restrict unauthorized access.</p>
+        </div>
+        <div class="card-body">
+          <div class="input-group">
+            <label>Select PDF</label>
+            <input type="file" accept=".pdf" class="file-input" (change)="onEncryptFileSelected($event)" />
+          </div>
+          <div class="input-group">
+            <label>Password</label>
+            <input type="password" placeholder="Set a password" class="text-input" [(ngModel)]="encryptPassword" />
+          </div>
+          <button class="primary-btn" (click)="encryptPDF()">Encrypt PDF</button>
+        </div>
+      </section>
+
+      <!-- PDF Decryption Section -->
+      <section [hidden]="activeTab !== 'decrypt'" class="card fade-in">
+        <div class="card-header">
+          <h2>Decrypt PDF</h2>
+          <p>Unlock and remove password protection from your PDF files.</p>
+        </div>
+        <div class="card-body">
+          <div class="input-group">
+            <label>Select Encrypted PDF</label>
+            <input type="file" accept=".pdf" class="file-input" (change)="onDecryptFileSelected($event)" />
+          </div>
+          <div class="input-group">
+            <label>Password</label>
+            <input type="password" placeholder="Enter current password" class="text-input"
+              [(ngModel)]="decryptPassword" />
+          </div>
+          <button class="primary-btn" (click)="decryptPDF()">Decrypt PDF</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</ion-content>

@@ -1,0 +1,139 @@
+<ion-header>
+  <ion-toolbar style="--background: #21914c; --color: white;">
+    <ion-buttons slot="start">
+      <ion-back-button style="color: white;"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Image Utility</ion-title>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-segment [value]="activeMode" (ionChange)="onModeChange($event)">
+      <ion-segment-button value="compress">
+        <ion-icon name="contract-outline"></ion-icon>
+        <ion-label>Compress</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="resize">
+        <ion-icon name="resize-outline"></ion-icon>
+        <ion-label>Resize</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="crop">
+        <ion-icon name="crop-outline"></ion-icon>
+        <ion-label>Crop</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ion-grid>
+    <ion-row class="ion-justify-content-center">
+      <ion-col size="12" size-md="8" size-lg="6">
+
+        <ion-card>
+          <ion-card-content>
+            <div class="file-input-container">
+              <input type="file" id="imageInput" accept="image/*" (change)="onFileSelected($event)" hidden>
+              <ion-button expand="block" (click)="fileInputClick()" style="--background: #21914c;color:white">
+                Select Image
+              </ion-button>
+              <div *ngIf="selectedFile" class="file-name ion-margin-top ion-text-center">
+                {{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(2) }} KB)
+              </div>
+            </div>
+
+            <!-- Preview/Workspace area -->
+            <div *ngIf="imageSrc" class="workspace ion-margin-top">
+
+              <!-- Crop Mode -->
+              <div *ngIf="activeMode === 'crop'" class="crop-container">
+                <img #cropperImage [src]="imageSrc" style="display: block; max-width: 100%;">
+              </div>
+
+              <!-- Non-Crop Mode Preview -->
+              <div *ngIf="activeMode !== 'crop'" class="img-container ion-text-center">
+                <img [src]="imageSrc" class="preview-image">
+                <div class="ion-margin-top ion-text-muted">
+                  Original Resolution: {{ originalWidth }} x {{ originalHeight }}
+                </div>
+              </div>
+
+            </div>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Settings Card -->
+        <ion-card *ngIf="selectedFile">
+          <ion-card-content>
+
+            <!-- Compress Settings -->
+            <div *ngIf="activeMode === 'compress'">
+              <ion-item>
+                <ion-label position="stacked">Target Size (KB)</ion-label>
+                <ion-input type="number" [(ngModel)]="targetSizeKB"></ion-input>
+              </ion-item>
+            </div>
+
+            <!-- Resize Settings -->
+            <div *ngIf="activeMode === 'resize'">
+              <ion-item>
+                <ion-label>Mode</ion-label>
+                <ion-select [(ngModel)]="resizeMode">
+                  <ion-select-option value="preset">Preset Sizes</ion-select-option>
+                  <ion-select-option value="custom">Custom Dimensions</ion-select-option>
+                </ion-select>
+              </ion-item>
+
+              <div *ngIf="resizeMode === 'preset'">
+                <ion-item>
+                  <ion-label>Size</ion-label>
+                  <ion-select [(ngModel)]="presetWidth"
+                    (ionChange)="presetHeight = getPresetHeight($event.detail.value)">
+                    <ion-select-option [value]="1920">FHD (1920 x 1080)</ion-select-option>
+                    <ion-select-option [value]="1280">HD (1280 x 720)</ion-select-option>
+                    <ion-select-option [value]="800">SVGA (800 x 600)</ion-select-option>
+                    <ion-select-option [value]="640">VGA (640 x 480)</ion-select-option>
+                  </ion-select>
+                </ion-item>
+              </div>
+
+              <div *ngIf="resizeMode === 'custom'">
+                <ion-item>
+                  <ion-label>Maintain Aspect Ratio</ion-label>
+                  <ion-select [(ngModel)]="maintainAspectRatio">
+                    <ion-select-option [value]="true">Yes</ion-select-option>
+                    <ion-select-option [value]="false">No</ion-select-option>
+                  </ion-select>
+                </ion-item>
+                <ion-item>
+                  <ion-label position="stacked">Width (px)</ion-label>
+                  <ion-input type="number" [(ngModel)]="customWidth" (ionChange)="onCustomWidthChange()"></ion-input>
+                </ion-item>
+                <ion-item>
+                  <ion-label position="stacked">Height (px)</ion-label>
+                  <ion-input type="number" [(ngModel)]="customHeight" (ionChange)="onCustomHeightChange()"></ion-input>
+                </ion-item>
+              </div>
+            </div>
+
+            <!-- Output Format (Common) -->
+            <ion-item class="ion-margin-top">
+              <ion-label>Output Format</ion-label>
+              <ion-select [(ngModel)]="outputFormat">
+                <ion-select-option value="auto">Same as input</ion-select-option>
+                <ion-select-option value="image/jpeg">JPEG (.jpg)</ion-select-option>
+                <ion-select-option value="image/png">PNG (.png)</ion-select-option>
+                <ion-select-option value="image/webp">WEBP (.webp)</ion-select-option>
+              </ion-select>
+            </ion-item>
+
+            <ion-button expand="block" class="ion-margin-top" (click)="processImage()"
+              style="--background: #21914c;color:white">
+              {{ activeMode === 'compress' ? 'Compress' : (activeMode === 'resize' ? 'Resize' : 'Crop') }} & Download
+            </ion-button>
+
+          </ion-card-content>
+        </ion-card>
+
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>
