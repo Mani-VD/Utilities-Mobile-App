@@ -6,7 +6,7 @@
     <ion-title>Image Utility</ion-title>
   </ion-toolbar>
   <ion-toolbar>
-    <ion-segment [value]="activeMode" (ionChange)="onModeChange($event)">
+    <ion-segment [value]="activeMode" (ionChange)="onModeChange($event)" scrollable="true">
       <ion-segment-button value="compress">
         <ion-icon name="contract-outline"></ion-icon>
         <ion-label>Compress</ion-label>
@@ -18,6 +18,10 @@
       <ion-segment-button value="crop">
         <ion-icon name="crop-outline"></ion-icon>
         <ion-label>Crop</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="convert">
+        <ion-icon name="swap-horizontal-outline"></ion-icon>
+        <ion-label>Convert</ion-label>
       </ion-segment-button>
     </ion-segment>
   </ion-toolbar>
@@ -114,8 +118,37 @@
               </div>
             </div>
 
+            <!-- Convert Settings -->
+            <div *ngIf="activeMode === 'convert'">
+              <div class="ion-margin-bottom">
+                <ion-button fill="outline" expand="block" (click)="fileInputClick()" style="--color: #21914c; --border-color: #21914c;">
+                  <ion-icon name="images-outline" slot="start"></ion-icon>
+                  Select / Change File
+                </ion-button>
+              </div>
+
+              <ion-item>
+                <ion-label position="stacked">Current Format</ion-label>
+                <ion-input [value]="getCurrentFormatDisplay()" [readonly]="true"></ion-input>
+              </ion-item>
+
+              <ion-item class="ion-margin-top">
+                <ion-label position="stacked">Convert To</ion-label>
+                <ion-select [(ngModel)]="convertTargetFormat" interface="popover">
+                  <ion-select-option value="image/jpeg">JPEG (.jpg)</ion-select-option>
+                  <ion-select-option value="image/png">PNG (.png)</ion-select-option>
+                  <ion-select-option value="image/webp">WEBP (.webp)</ion-select-option>
+                  <ion-select-option value="image/gif">GIF (.gif)</ion-select-option>
+                  <ion-select-option value="image/bmp">BMP (.bmp)</ion-select-option>
+                  <ion-select-option value="image/avif">AVIF (.avif)</ion-select-option>
+                  <ion-select-option value="image/x-icon">ICO (.ico)</ion-select-option>
+                  <ion-select-option value="image/svg+xml">SVG (.svg)</ion-select-option>
+                </ion-select>
+              </ion-item>
+            </div>
+
             <!-- Output Format (Common) -->
-            <ion-item class="ion-margin-top">
+            <ion-item class="ion-margin-top" *ngIf="activeMode !== 'convert'">
               <ion-label>Output Format</ion-label>
               <ion-select [(ngModel)]="outputFormat">
                 <ion-select-option value="auto">Same as input</ion-select-option>
@@ -127,7 +160,7 @@
 
             <ion-button expand="block" class="ion-margin-top" (click)="processImage()"
               style="--background: #21914c;color:white">
-              {{ activeMode === 'compress' ? 'Compress' : (activeMode === 'resize' ? 'Resize' : 'Crop') }} & Download
+              {{ getActionLabel() }}
             </ion-button>
 
           </ion-card-content>
