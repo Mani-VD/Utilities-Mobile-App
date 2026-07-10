@@ -40,6 +40,7 @@ The project is structured around Angular Standalone Components and Ionic UI elem
 
 ### Key Highlights
 - **100% Client-Side Processing**: Heavy tasks like cryptography and image algorithms run via Web Workers, WebAssembly (`qpdf-wasm`), and native device APIs.
+- **Reactive Asynchronous UX & Non-Blocking Feedback**: All heavy client-side operations (WebAssembly AES encryption/decryption, Web Worker image compression, multi-page image scanning, and binary format encoding) are wrapped in asynchronous lifecycle controllers (`LoadingController` overlays and inline `<ion-spinner>` indicators) with reactive button state management (`isProcessing`), preventing UI freezes and providing real-time feedback.
 - **Cross-Platform Delivery**: Functions as a Progressive Web App (PWA) in standard browsers and compiles into a native Android application via Capacitor.
 - **Native OS Integration**: Features custom Android back-button handling (double-tap to exit on Home screen), direct file saving to device Documents, and native system share sheets.
 
@@ -48,7 +49,7 @@ The project is structured around Angular Standalone Components and Ionic UI elem
 ## Core Modules & Features
 
 ### 1. PDF Utilities (`PdfUtilityComponent`)
-Located in [src/app/home/pdf-utility.component.ts](file:///home/manikandanvd/personal-projects/utilities/src/app/home/pdf-utility.component.ts), this module divides into four specialized workflows:
+Located in [src/app/home/pdf-utility.component.ts](file:///home/manikandanvd/personal-projects/utilities/src/app/home/pdf-utility.component.ts), this module divides into five specialized workflows:
 
 #### A. Rich Text PDF Creator
 - **Visual Editor**: Custom DOM-based editing area supporting text formatting (Bold, Italic, Underline), heading hierarchies (`<h1>`, `<h2>`), bulleted lists (`<li>`), and inline image insertion.
@@ -61,19 +62,25 @@ Located in [src/app/home/pdf-utility.component.ts](file:///home/manikandanvd/per
 #### C. PDF Encryption (AES-256)
 - **WebAssembly Security**: Uses `@neslinesli93/qpdf-wasm` (`qpdf`) to apply military-grade AES-256 encryption to user-provided PDF files with custom passwords.
 - **Zero-Data Leakage**: Files are processed in-memory within a virtual filesystem (`qpdf.FS`), ensuring sensitive documents never leave the device.
+- **Asynchronous UX & Loading Management**: Displays non-blocking loading overlays (`showLoading('Encrypting PDF...')`) and dynamically disables action buttons (`[disabled]="isProcessing"`) with inline `<ion-spinner>` indicators during WebAssembly execution.
 
 #### D. PDF Decryption & Protection Analysis
-- **Protection Verification**: Automatically checks if selected PDFs require a password (`--requires-password` flag inspection) and provides immediate user feedback.
+- **Protection Verification**: Automatically checks if selected PDFs require a password (`--requires-password` flag inspection) with dedicated visual loading feedback (`'Checking file protection...'`).
 - **Unlocking**: Removes user and owner passwords from protected PDFs locally, generating clean, unencrypted output files.
+- **Safe Lifecycle Cleanup**: All decryption and inspection routines implement robust `try/catch/finally` blocks with `dismissLoading()` to ensure the UI remains responsive even if password decryption fails.
+
+#### E. PDF Merger & Combiner
+- **Multi-File Sequence Management**: Allows users to select multiple PDF files, view page counts and file sizes, and reorder (`↑` / `↓`) or remove items before merging.
+- **Client-Side Page Compilation**: Uses `pdf-lib` (`PDFDocument.load()` & `PDFDocument.copyPages()`) to merge pages in memory and export a single consolidated PDF directly to device storage (`Documents/Utilities/`) or browser download.
 
 ---
 
 ### 2. Image Utilities (`ImageUtilityComponent`)
-Located in [src/app/image-utility/image-utility.component.ts](file:///home/manikandanvd/personal-projects/utilities/src/app/image-utility/image-utility.component.ts), this module provides a 4-in-1 image processing workbench:
+Located in [src/app/image-utility/image-utility.component.ts](file:///home/manikandanvd/personal-projects/utilities/src/app/image-utility/image-utility.component.ts), this module provides a 5-in-1 image processing workbench equipped with reactive loading lifecycle indicators (`LoadingController` and `<ion-spinner>`):
 
 #### A. Image Compression
 - **Smart Sizing**: Powered by `browser-image-compression`, allowing users to define precise target file sizes in Kilobytes (e.g., compress a 5 MB photo down to 500 KB).
-- **Web Worker Execution**: Compresses images asynchronously without freezing the user interface, supporting output type selection (`AUTO`, `JPEG`, `PNG`, `WEBP`).
+- **Web Worker Execution & Reactive UX**: Compresses images asynchronously via Web Workers while presenting an operation-specific loading dialog (`'Compressing image...'`). Action buttons indicate live progress and prevent concurrent submissions (`[disabled]="isProcessing"`).
 
 #### B. Image Resizing
 - **Preset & Custom Resolutions**: Includes quick-select standard aspect ratios (`1920x1080`, `1280x720`, `800x600`, `640x480`) alongside custom width/height input fields.
@@ -93,6 +100,12 @@ Located in [src/app/image-utility/image-utility.component.ts](file:///home/manik
   - **BMP (`image/bmp`)**: Features a custom binary device-independent bitmap header generator (`convertToBmp`) for legacy Windows compatibility.
   - **ICO (`image/x-icon`)**: Implements an inline icon directory wrapper (`convertToIco`) to package PNG buffers into standard favicon/Windows icon containers.
 - **Alpha Channel Handling**: Automatically fills transparent areas with solid white backgrounds when converting PNG/WEBP files to non-transparent formats like JPEG or BMP.
+
+#### E. Photo Filters & Color Tuning
+- **Preset Styles**: Quick-apply curated aesthetic filter presets (`Normal`, `Vibrant`, `Vintage`, `B&W Noir`, `Warm Glow`, `Cool Crisp`).
+- **Granular Color Sliders**: Six interactive `<ion-range>` controls for fine-tuning **Brightness** (`0-200%`), **Contrast** (`0-200%`), **Saturation** (`0-200%`), **Grayscale** (`0-100%`), **Sepia** (`0-100%`), and **Soft Blur** (`0-10px`).
+- **Real-Time Live CSS Preview**: Dynamically updates preview rendering (`[style.filter]`) instantaneously as sliders are adjusted.
+- **Full-Resolution Canvas Rasterization**: Applies high-precision 2D Canvas filters (`ctx.filter`) during export to generate full-resolution processed output files.
 
 ---
 
@@ -158,6 +171,24 @@ utilities/
 ├── package.json               # NPM dependency management & build scripts
 └── APP_DOCUMENT.md            # Comprehensive project technical documentation
 ```
+
+---
+
+## Version History & Latest Patches
+
+### v1.3.0 (Latest Patch) — Asynchronous UX & Loading State Lifecycle Management
+- **Reactive Loading Overlays**: Integrated Ionic `LoadingController` and `<ion-spinner>` indicators across [PdfUtilityComponent](file:///home/manikandanvd/personal-projects/utilities/src/app/home/pdf-utility.component.ts) and [ImageUtilityComponent](file:///home/manikandanvd/personal-projects/utilities/src/app/image-utility/image-utility.component.ts).
+- **Dynamic Action Button States**: Added reactive `isProcessing` guards and visual spinners to buttons across all workflows (PDF encryption/decryption, document scanning, image compression, resizing, cropping, and multi-format conversion) to prevent concurrent executions.
+- **Reliable Lifecycle Cleanup**: Wrapped asynchronous file loading (`FileReader.readAsDataURL`), WebAssembly operations (`qpdf-wasm`), and Canvas encoding in structured `try/catch/finally` blocks with guaranteed `dismissLoading()` execution.
+
+### v1.2.0 — Multi-Format Image Converter & Custom Binary Encoders
+- **Universal Image Format Conversion**: Added multi-format support including JPEG, PNG, WEBP, AVIF, GIF, TIFF, and scalable SVG wrappers.
+- **Custom Binary Encoders**: Implemented standalone client-side encoders for Windows BMP (`convertToBmp`) device-independent bitmaps and ICO (`convertToIco`) favicon containers.
+- **Alpha Channel Composition**: Implemented automatic white background filling when converting transparent PNG/WEBP images to non-transparent formats (JPEG/BMP).
+
+### v1.1.0 — Android 16 (API Level 36) Compliance & Scoped Storage
+- **Scoped Storage Optimization**: Capped legacy storage permissions (`READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE`) at `android:maxSdkVersion="32"` in [AndroidManifest.xml](file:///home/manikandanvd/personal-projects/utilities/android/app/src/main/AndroidManifest.xml), preventing policy warnings and enabling seamless MediaStore / ContentResolver operation on Android 13+ devices.
+- **Hardware Back Button Control**: Implemented double-tap exit listener in [AppComponent](file:///home/manikandanvd/personal-projects/utilities/src/app/app.component.ts) to prevent accidental exits on Android devices.
 
 ---
 

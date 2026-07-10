@@ -1,5 +1,50 @@
 @import 'cropperjs/dist/cropper.css';
 
+.modern-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.tab-btn:hover {
+  color: #21914c;
+}
+
+.tab-btn.active {
+  color: #21914c;
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -0.65rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #21914c;
+  border-radius: 2px;
+}
+
 .file-input-container {
   display: flex;
   flex-direction: column;
@@ -46,4 +91,95 @@ ion-segment-button {
   --color-checked: #21914c;
   --indicator-color: #21914c;
 }
+
+.filter-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.preset-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-chip:hover {
+  border-color: #21914c;
+  color: #21914c;
+}
+
+.preset-chip.active {
+  background: #21914c;
+  border-color: #21914c;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(33, 145, 76, 0.25);
+}
+
+.slider-label-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #374151;
+  margin-top: 10px;
+}
+
+.slider-value-badge {
+  background: #f3f4f6;
+  color: #1f2937;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+@media (prefers-color-scheme: dark) {
+  .preset-chip {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+
+  .preset-chip.active {
+    background: #21914c;
+    border-color: #21914c;
+    color: #ffffff;
+  }
+
+  .slider-label-header {
+    color: #e5e7eb;
+  }
+
+  .slider-value-badge {
+    background: #374151;
+    color: #f3f4f6;
+  }
+
+  .tabs {
+    border-color: #374151;
+  }
+
+  .tab-btn {
+    color: #9ca3af;
+  }
+
+  .tab-btn:hover,
+  .tab-btn.active {
+    color: #4ade80;
+  }
+
+  .tab-btn.active::after {
+    background-color: #4ade80;
+  }
+}
+
 

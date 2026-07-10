@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { 
   IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardContent, 
   IonButton, IonItem, IonLabel, IonInput, IonSelect, IonSelectOption, 
-  IonSegment, IonSegmentButton, IonGrid, IonRow, IonCol, IonButtons, IonBackButton, IonIcon,
-  ToastController
+  IonGrid, IonRow, IonCol, IonButtons, IonBackButton, IonIcon, IonSpinner, IonRange,
+  ToastController, LoadingController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { contractOutline, resizeOutline, cropOutline, swapHorizontalOutline, imagesOutline } from 'ionicons/icons';
+import { contractOutline, resizeOutline, cropOutline, swapHorizontalOutline, imagesOutline, colorFilterOutline, refreshOutline } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -24,13 +24,22 @@ import imageCompression from 'browser-image-compression';
     CommonModule, FormsModule,
     IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardContent, 
     IonButton, IonItem, IonLabel, IonInput, IonSelect, IonSelectOption, 
-    IonSegment, IonSegmentButton, IonGrid, IonRow, IonCol, IonButtons, IonBackButton, IonIcon
+    IonGrid, IonRow, IonCol, IonButtons, IonBackButton, IonIcon, IonSpinner, IonRange
   ]
 })
 export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
   @ViewChild('cropperImage') cropperImage!: ElementRef<HTMLImageElement>;
   
-  activeMode: 'compress' | 'resize' | 'crop' | 'convert' = 'compress';
+  activeMode: 'compress' | 'resize' | 'crop' | 'convert' | 'filter' = 'compress';
+
+  // Filters & Color Tuning
+  filterBrightness: number = 100;
+  filterContrast: number = 100;
+  filterSaturation: number = 100;
+  filterGrayscale: number = 0;
+  filterSepia: number = 0;
+  filterBlur: number = 0;
+  activePreset: string = 'Normal';
   
   selectedFile: File | null = null;
   imageSrc: string | null = null;
@@ -55,8 +64,34 @@ export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
   // Cropper
   cropper: Cropper | null = null;
 
-  constructor(private toastController: ToastController) {
-    addIcons({ contractOutline, resizeOutline, cropOutline, swapHorizontalOutline, imagesOutline });
+  isProcessing = false;
+  processingMessage = '';
+
+  constructor(private toastController: ToastController, private loadingController: LoadingController) {
+    addIcons({ contractOutline, resizeOutline, cropOutline, swapHorizontalOutline, imagesOutline, colorFilterOutline, refreshOutline });
+  }
+
+  private async showLoading(message: string) {
+    this.isProcessing = true;
+    this.processingMessage = message;
+    const loading = await this.loadingController.create({
+      message: message,
+      spinner: 'circles'
+    });
+    await loading.present();
+    return loading;
+  }
+
+  private async dismissLoading(loading: any) {
+    this.isProcessing = false;
+    this.processingMessage = '';
+    if (loading) {
+      try {
+        await loading.dismiss();
+      } catch (e) {
+        // Already dismissed
+      }
+    }
   }
 
   getCurrentFormatDisplay(): string {
@@ -83,6 +118,7 @@ export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
       case 'resize': return 'Resize & Download';
       case 'crop': return 'Crop & Download';
       case 'convert': return 'Convert & Download';
+      case 'filter': return 'Apply Filters & Download';
       default: return 'Process & Download';
     }
   }
@@ -115,35 +151,63 @@ export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  onFileSelected(event: any) {
+  async onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file && file.type.startsWith('image/')) {
       this.selectedFile = file;
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.imageSrc = e.target.result;
-        this.loadOriginalDimensions();
-        this.loadOriginalDimensions();
+      const loading = await this.showLoading('Loading image...');
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e: any) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        this.imageSrc = dataUrl;
+        await this.loadOriginalDimensions();
         if (this.activeMode === 'crop') {
           setTimeout(() => this.initCropper(), 100);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Error loading file:', err);
+        await this.showToast('Failed to load image.', 'danger');
+      } finally {
+        await this.dismissLoading(loading);
+      }
     }
   }
 
-  loadOriginalDimensions() {
-    if (!this.imageSrc) return;
-    const img = new Image();
-    img.onload = () => {
-      this.originalWidth = img.width;
-      this.originalHeight = img.height;
-      if (this.maintainAspectRatio) {
-        this.customWidth = img.width;
-        this.customHeight = img.height;
+  loadOriginalDimensions(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.imageSrc) {
+        resolve();
+        return;
       }
-    };
-    img.src = this.imageSrc;
+      const img = new Image();
+      img.onload = () => {
+        this.originalWidth = img.width;
+        this.originalHeight = img.height;
+        if (this.maintainAspectRatio) {
+          this.customWidth = img.width;
+          this.customHeight = img.height;
+        }
+        resolve();
+      };
+      img.onerror = () => resolve();
+      img.src = this.imageSrc;
+    });
+  }
+
+  setActiveMode(mode: 'compress' | 'resize' | 'crop' | 'convert' | 'filter') {
+    this.activeMode = mode;
+    if (this.activeMode === 'crop') {
+      setTimeout(() => this.initCropper(), 100);
+    } else {
+      if (this.cropper) {
+        this.cropper.destroy();
+        this.cropper = null;
+      }
+    }
   }
 
   onModeChange(event: any) {
@@ -204,38 +268,53 @@ export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
   async processImage() {
     if (!this.selectedFile || !this.imageSrc) return;
 
+    let message = 'Processing image...';
+    switch (this.activeMode) {
+      case 'compress': message = 'Compressing image...'; break;
+      case 'resize': message = 'Resizing image...'; break;
+      case 'crop': message = 'Cropping image...'; break;
+      case 'convert': message = 'Converting image...'; break;
+      case 'filter': message = 'Applying photo filters...'; break;
+    }
+
+    const loading = await this.showLoading(message);
+
     const mimeType = this.activeMode === 'convert' ? this.convertTargetFormat : this.getOutputMimeType();
     let resultBlob: Blob | null = null;
 
-    if (this.activeMode === 'compress') {
-      const options = {
-        maxSizeMB: this.targetSizeKB / 1024,
-        useWebWorker: true,
-        fileType: mimeType
-      };
-      try {
+    try {
+      if (this.activeMode === 'compress') {
+        const options = {
+          maxSizeMB: this.targetSizeKB / 1024,
+          useWebWorker: true,
+          fileType: mimeType
+        };
         resultBlob = await imageCompression(this.selectedFile, options);
-      } catch (error) {
-        console.error('Compression error:', error);
-        return;
+      } else if (this.activeMode === 'resize') {
+        let targetW = this.resizeMode === 'preset' ? this.presetWidth : this.customWidth;
+        let targetH = this.resizeMode === 'preset' ? this.presetHeight : this.customHeight;
+        resultBlob = await this.resizeCanvas(this.imageSrc, targetW, targetH, mimeType);
+      } else if (this.activeMode === 'crop') {
+        if (this.cropper) {
+          const canvas = this.cropper.getCroppedCanvas();
+          resultBlob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob((b: Blob | null) => resolve(b), mimeType, 0.95);
+          });
+        }
+      } else if (this.activeMode === 'convert') {
+        resultBlob = await this.convertImageFormat(this.imageSrc, this.originalWidth, this.originalHeight, mimeType);
+      } else if (this.activeMode === 'filter') {
+        resultBlob = await this.applyFiltersCanvas(this.imageSrc, this.originalWidth, this.originalHeight, mimeType);
       }
-    } else if (this.activeMode === 'resize') {
-      let targetW = this.resizeMode === 'preset' ? this.presetWidth : this.customWidth;
-      let targetH = this.resizeMode === 'preset' ? this.presetHeight : this.customHeight;
-      resultBlob = await this.resizeCanvas(this.imageSrc, targetW, targetH, mimeType);
-    } else if (this.activeMode === 'crop') {
-      if (this.cropper) {
-        const canvas = this.cropper.getCroppedCanvas();
-        resultBlob = await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob((b: Blob | null) => resolve(b), mimeType, 0.95);
-        });
-      }
-    } else if (this.activeMode === 'convert') {
-      resultBlob = await this.convertImageFormat(this.imageSrc, this.originalWidth, this.originalHeight, mimeType);
-    }
 
-    if (resultBlob) {
-      this.downloadBlob(resultBlob, mimeType);
+      if (resultBlob) {
+        await this.downloadBlob(resultBlob, mimeType, loading);
+      }
+    } catch (error) {
+      console.error('Processing error:', error);
+      await this.showToast('An error occurred during image processing.', 'danger');
+    } finally {
+      await this.dismissLoading(loading);
     }
   }
 
@@ -253,9 +332,96 @@ export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
         } else {
           resolve(null);
         }
+       };
+      img.src = src;
+    });
+  }
+
+  applyFiltersCanvas(src: string, width: number, height: number, mimeType: string): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width || img.width;
+        canvas.height = height || img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.filter = this.getFilterCss();
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => resolve(blob), mimeType, 0.95);
+        } else {
+          resolve(null);
+        }
       };
       img.src = src;
     });
+  }
+
+  applyPresetFilter(preset: string) {
+    this.activePreset = preset;
+    switch (preset) {
+      case 'Normal':
+        this.resetFilters();
+        break;
+      case 'Vibrant':
+        this.filterBrightness = 110;
+        this.filterContrast = 125;
+        this.filterSaturation = 145;
+        this.filterGrayscale = 0;
+        this.filterSepia = 0;
+        this.filterBlur = 0;
+        break;
+      case 'Vintage':
+        this.filterBrightness = 95;
+        this.filterContrast = 110;
+        this.filterSaturation = 85;
+        this.filterGrayscale = 0;
+        this.filterSepia = 65;
+        this.filterBlur = 0;
+        break;
+      case 'Noir':
+        this.filterBrightness = 105;
+        this.filterContrast = 135;
+        this.filterSaturation = 100;
+        this.filterGrayscale = 100;
+        this.filterSepia = 0;
+        this.filterBlur = 0;
+        break;
+      case 'Warm Glow':
+        this.filterBrightness = 105;
+        this.filterContrast = 105;
+        this.filterSaturation = 125;
+        this.filterGrayscale = 0;
+        this.filterSepia = 25;
+        this.filterBlur = 0;
+        break;
+      case 'Cool Crisp':
+        this.filterBrightness = 105;
+        this.filterContrast = 120;
+        this.filterSaturation = 110;
+        this.filterGrayscale = 0;
+        this.filterSepia = 0;
+        this.filterBlur = 0;
+        break;
+    }
+  }
+
+  resetFilters() {
+    this.filterBrightness = 100;
+    this.filterContrast = 100;
+    this.filterSaturation = 100;
+    this.filterGrayscale = 0;
+    this.filterSepia = 0;
+    this.filterBlur = 0;
+    this.activePreset = 'Normal';
+  }
+
+  onFilterChange() {
+    this.activePreset = 'Custom';
+  }
+
+  getFilterCss(): string {
+    return `brightness(${this.filterBrightness}%) contrast(${this.filterContrast}%) saturate(${this.filterSaturation}%) grayscale(${this.filterGrayscale}%) sepia(${this.filterSepia}%) blur(${this.filterBlur}px)`;
   }
 
   async convertImageFormat(src: string, width: number, height: number, mimeType: string): Promise<Blob | null> {
@@ -390,7 +556,7 @@ export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
     return new Blob([icoBuffer], { type: 'image/x-icon' });
   }
 
-  async downloadBlob(blob: Blob, mimeType: string) {
+  async downloadBlob(blob: Blob, mimeType: string, loading?: any) {
     const ext = this.getOutputExtension(mimeType);
     const originalName = this.selectedFile?.name || 'image';
     const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
@@ -434,6 +600,10 @@ export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
           await this.showToast(`Saved image on device.`);
         }
 
+        if (loading) {
+          await this.dismissLoading(loading);
+        }
+
         if (fileUri) {
           try {
             await Share.share({
@@ -451,6 +621,9 @@ export class ImageUtilityComponent implements AfterViewInit, OnDestroy {
         await this.showToast('Failed to save image on device.', 'danger');
       }
     } else {
+      if (loading) {
+        await this.dismissLoading(loading);
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

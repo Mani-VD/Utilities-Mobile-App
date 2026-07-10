@@ -9,6 +9,8 @@ import {
   IonHeader,
   IonTitle,
   IonToolbar,
+  IonSpinner,
+  LoadingController,
   ToastController
 } from '@ionic/angular/standalone';
 // @ts-ignore
@@ -17,16 +19,27 @@ import { DocumentScanner } from '@capacitor-mlkit/document-scanner';
 import { Capacitor } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { PDFDocument } from 'pdf-lib';
+
+export interface MergePdfItem {
+  file: File;
+  name: string;
+  sizeFormatted: string;
+  pageCount?: number;
+}
 
 @Component({
   selector: 'app-pdf-utility',
   templateUrl: './pdf-utility.component.html',
   styleUrls: ['./pdf-utility.component.css'],
   standalone: true,
-  imports: [CommonModule, FormsModule, IonBackButton, IonButtons, IonContent, IonHeader, IonTitle, IonToolbar]
+  imports: [CommonModule, FormsModule, IonBackButton, IonButtons, IonContent, IonHeader, IonTitle, IonToolbar, IonSpinner]
 })
 export class PdfUtilityComponent {
   activeTab = 'create';
+
+  isProcessing = false;
+  processingMessage = '';
 
   activeStyles = {
     bold: false,
@@ -43,11 +56,35 @@ export class PdfUtilityComponent {
   selectedDecryptFile: File | null = null;
 
   scannedImages: string[] = [];
+  mergePdfList: MergePdfItem[] = [];
 
   @ViewChild('editor', { static: false }) editor!: ElementRef<HTMLDivElement>;
   @ViewChild('scanInput', { static: false }) scanInput!: ElementRef<HTMLInputElement>;
 
-  constructor(private toastController: ToastController) { }
+  constructor(private toastController: ToastController, private loadingController: LoadingController) { }
+
+  private async showLoading(message: string) {
+    this.isProcessing = true;
+    this.processingMessage = message;
+    const loading = await this.loadingController.create({
+      message: message,
+      spinner: 'circles'
+    });
+    await loading.present();
+    return loading;
+  }
+
+  private async dismissLoading(loading: any) {
+    this.isProcessing = false;
+    this.processingMessage = '';
+    if (loading) {
+      try {
+        await loading.dismiss();
+      } catch (e) {
+        // Already dismissed
+      }
+    }
+  }
 
   setActiveTab(tab: string) {
     this.activeTab = tab;
@@ -66,7 +103,12 @@ export class PdfUtilityComponent {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.selectedDecryptFile = input.files[0];
-      await this.checkIfProtected(this.selectedDecryptFile);
+      const loading = await this.showLoading('Checking PDF protection...');
+      try {
+        await this.checkIfProtected(this.selectedDecryptFile);
+      } finally {
+        await this.dismissLoading(loading);
+      }
     } else {
       this.selectedDecryptFile = null;
     }
@@ -121,6 +163,8 @@ export class PdfUtilityComponent {
       return;
     }
 
+    const loading = await this.showLoading('Encrypting PDF...');
+
     try {
       const fileBuffer = await this.selectedEncryptFile.arrayBuffer();
 
@@ -160,6 +204,8 @@ export class PdfUtilityComponent {
     } catch (error) {
       console.error('Error encrypting PDF', error);
       alert('Failed to encrypt the PDF. Please try again.');
+    } finally {
+      await this.dismissLoading(loading);
     }
   }
 
@@ -172,6 +218,8 @@ export class PdfUtilityComponent {
       alert('Please enter a password.');
       return;
     }
+
+    const loading = await this.showLoading('Decrypting PDF...');
 
     try {
       const fileBuffer = await this.selectedDecryptFile.arrayBuffer();
@@ -212,6 +260,102 @@ export class PdfUtilityComponent {
     } catch (error: any) {
       console.error('Error decrypting PDF', error);
       alert('Failed to decrypt the PDF. Please make sure the password is correct.');
+    } finally {
+      await this.dismissLoading(loading);
+    }
+  }
+
+  async onMergeFilesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const newFiles = Array.from(input.files);
+      const loading = await this.showLoading('Analyzing PDF files...');
+      try {
+        for (const file of newFiles) {
+          let pageCount: number | undefined = undefined;
+          try {
+            const buffer = await file.arrayBuffer();
+            const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+            pageCount = pdfDoc.getPageCount();
+          } catch (e) {
+            console.warn('Could not read page count for', file.name, e);
+          }
+          const sizeFormatted = (file.size / 1024).toFixed(1) + ' KB';
+          this.mergePdfList.push({
+            file,
+            name: file.name,
+            sizeFormatted,
+            pageCount
+          });
+        }
+      } finally {
+        await this.dismissLoading(loading);
+        input.value = '';
+      }
+    }
+  }
+
+  removeMergeFile(index: number) {
+    this.mergePdfList.splice(index, 1);
+  }
+
+  moveMergeFileUp(index: number) {
+    if (index > 0) {
+      const temp = this.mergePdfList[index - 1];
+      this.mergePdfList[index - 1] = this.mergePdfList[index];
+      this.mergePdfList[index] = temp;
+    }
+  }
+
+  moveMergeFileDown(index: number) {
+    if (index < this.mergePdfList.length - 1) {
+      const temp = this.mergePdfList[index + 1];
+      this.mergePdfList[index + 1] = this.mergePdfList[index];
+      this.mergePdfList[index] = temp;
+    }
+  }
+
+  async mergePDFs() {
+    if (this.mergePdfList.length < 2) {
+      alert('Please select at least two PDF files to merge.');
+      return;
+    }
+
+    const loading = await this.showLoading('Merging PDF files...');
+
+    try {
+      const mergedPdf = await PDFDocument.create();
+
+      for (const item of this.mergePdfList) {
+        const fileBuffer = await item.file.arrayBuffer();
+        const pdf = await PDFDocument.load(fileBuffer);
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
+      }
+
+      const mergedPdfBytes = await mergedPdf.save();
+      const fileName = `merged-${this.getTimestamp()}.pdf`;
+
+      if (Capacitor.isNativePlatform()) {
+        const base64Data = this.uint8ArrayToBase64(mergedPdfBytes);
+        await this.saveNativePDF(fileName, base64Data, 'Merged PDF saved.');
+      } else {
+        const blob = new Blob([mergedPdfBytes as any], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        await this.showToast('Merged PDF generated successfully!');
+      }
+
+      this.mergePdfList = []; // Clear list after successful merge
+    } catch (error) {
+      console.error('Error merging PDFs', error);
+      alert('Failed to merge the PDF files. Please ensure they are valid unencrypted PDFs.');
+    } finally {
+      await this.dismissLoading(loading);
     }
   }
 
@@ -273,18 +417,29 @@ export class PdfUtilityComponent {
     }
   }
 
-  onScanImages(event: Event) {
+  async onScanImages(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      Array.from(input.files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          this.scannedImages.push(dataUrl);
-        };
-        reader.readAsDataURL(file);
-      });
-      input.value = ''; // Reset input so the user can select more files if needed
+      const files = Array.from(input.files);
+      const loading = await this.showLoading('Loading images...');
+      try {
+        const promises = files.map(file => {
+          return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = (e) => reject(e);
+            reader.readAsDataURL(file);
+          });
+        });
+        const dataUrls = await Promise.all(promises);
+        this.scannedImages.push(...dataUrls);
+      } catch (err) {
+        console.error('Error reading images', err);
+        alert('Failed to load some images.');
+      } finally {
+        await this.dismissLoading(loading);
+        input.value = ''; // Reset input so the user can select more files if needed
+      }
     }
   }
 
@@ -297,6 +452,8 @@ export class PdfUtilityComponent {
       alert('Please scan or select at least one image.');
       return;
     }
+
+    const loading = await this.showLoading('Generating PDF from images...');
 
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -358,6 +515,8 @@ export class PdfUtilityComponent {
     } catch (error) {
       console.error('Error generating scanned PDF', error);
       alert('An error occurred while generating the scanned PDF.');
+    } finally {
+      await this.dismissLoading(loading);
     }
   }
 
@@ -368,6 +527,8 @@ export class PdfUtilityComponent {
       alert('Please enter some text or insert an image to generate a PDF.');
       return;
     }
+
+    const loading = await this.showLoading('Generating PDF...');
 
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -565,6 +726,8 @@ export class PdfUtilityComponent {
     } catch (error) {
       console.error('Error generating PDF', error);
       alert('An error occurred while generating the PDF.');
+    } finally {
+      await this.dismissLoading(loading);
     }
   }
 

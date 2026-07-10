@@ -5,29 +5,63 @@
     </ion-buttons>
     <ion-title>Image Utility</ion-title>
   </ion-toolbar>
-  <ion-toolbar>
-    <ion-segment [value]="activeMode" (ionChange)="onModeChange($event)" scrollable="true">
-      <ion-segment-button value="compress">
-        <ion-icon name="contract-outline"></ion-icon>
-        <ion-label>Compress</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="resize">
-        <ion-icon name="resize-outline"></ion-icon>
-        <ion-label>Resize</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="crop">
-        <ion-icon name="crop-outline"></ion-icon>
-        <ion-label>Crop</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="convert">
-        <ion-icon name="swap-horizontal-outline"></ion-icon>
-        <ion-label>Convert</ion-label>
-      </ion-segment-button>
-    </ion-segment>
-  </ion-toolbar>
 </ion-header>
 
-<ion-content class="ion-padding">
+<ion-content>
+  <div class="modern-container">
+    <nav class="tabs">
+      <button class="tab-btn" [class.active]="activeMode === 'compress'" (click)="setActiveMode('compress')"
+        title="Compress Image">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 14h6v6"></path>
+          <path d="M20 10h-6V4"></path>
+          <path d="M14 10l7-7"></path>
+          <path d="M3 21l7-7"></path>
+        </svg>
+      </button>
+      <button class="tab-btn" [class.active]="activeMode === 'resize'" (click)="setActiveMode('resize')"
+        title="Resize Image">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <polyline points="9 21 3 21 3 15"></polyline>
+          <line x1="21" y1="3" x2="14" y2="10"></line>
+          <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+      </button>
+      <button class="tab-btn" [class.active]="activeMode === 'crop'" (click)="setActiveMode('crop')"
+        title="Crop Image">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2v14a2 2 0 0 0 2 2h14"></path>
+          <path d="M18 22V8a2 2 0 0 0-2-2H2"></path>
+        </svg>
+      </button>
+      <button class="tab-btn" [class.active]="activeMode === 'convert'" (click)="setActiveMode('convert')"
+        title="Convert Format">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 10h14l-4-4"></path>
+          <path d="M17 14H3l4 4"></path>
+        </svg>
+      </button>
+      <button class="tab-btn" [class.active]="activeMode === 'filter'" (click)="setActiveMode('filter')"
+        title="Photo Filters & Color Tuning">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="21" x2="4" y2="14"></line>
+          <line x1="4" y1="10" x2="4" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12" y2="3"></line>
+          <line x1="20" y1="21" x2="20" y2="16"></line>
+          <line x1="20" y1="12" x2="20" y2="3"></line>
+          <line x1="1" y1="14" x2="7" y2="14"></line>
+          <line x1="9" y1="8" x2="15" y2="8"></line>
+          <line x1="17" y1="16" x2="23" y2="16"></line>
+        </svg>
+      </button>
+    </nav>
   <ion-grid>
     <ion-row class="ion-justify-content-center">
       <ion-col size="12" size-md="8" size-lg="6">
@@ -36,8 +70,9 @@
           <ion-card-content>
             <div class="file-input-container">
               <input type="file" id="imageInput" accept="image/*" (change)="onFileSelected($event)" hidden>
-              <ion-button expand="block" (click)="fileInputClick()" style="--background: #21914c;color:white">
-                Select Image
+              <ion-button expand="block" [disabled]="isProcessing" (click)="fileInputClick()" style="--background: #21914c;color:white">
+                <ion-spinner *ngIf="isProcessing && processingMessage === 'Loading image...'" name="crescent" slot="start" style="width: 20px; height: 20px;"></ion-spinner>
+                {{ isProcessing && processingMessage === 'Loading image...' ? 'Loading...' : 'Select Image' }}
               </ion-button>
               <div *ngIf="selectedFile" class="file-name ion-margin-top ion-text-center">
                 {{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(2) }} KB)
@@ -54,7 +89,7 @@
 
               <!-- Non-Crop Mode Preview -->
               <div *ngIf="activeMode !== 'crop'" class="img-container ion-text-center">
-                <img [src]="imageSrc" class="preview-image">
+                <img [src]="imageSrc" [style.filter]="activeMode === 'filter' ? getFilterCss() : 'none'" class="preview-image">
                 <div class="ion-margin-top ion-text-muted">
                   Original Resolution: {{ originalWidth }} x {{ originalHeight }}
                 </div>
@@ -121,9 +156,10 @@
             <!-- Convert Settings -->
             <div *ngIf="activeMode === 'convert'">
               <div class="ion-margin-bottom">
-                <ion-button fill="outline" expand="block" (click)="fileInputClick()" style="--color: #21914c; --border-color: #21914c;">
-                  <ion-icon name="images-outline" slot="start"></ion-icon>
-                  Select / Change File
+                <ion-button fill="outline" expand="block" [disabled]="isProcessing" (click)="fileInputClick()" style="--color: #21914c; --border-color: #21914c;">
+                  <ion-icon *ngIf="!(isProcessing && processingMessage === 'Loading image...')" name="images-outline" slot="start"></ion-icon>
+                  <ion-spinner *ngIf="isProcessing && processingMessage === 'Loading image...'" name="crescent" slot="start" style="width: 20px; height: 20px;"></ion-spinner>
+                  {{ isProcessing && processingMessage === 'Loading image...' ? 'Loading...' : 'Select / Change File' }}
                 </ion-button>
               </div>
 
@@ -147,6 +183,63 @@
               </ion-item>
             </div>
 
+            <!-- Filter & Color Tuning Settings -->
+            <div *ngIf="activeMode === 'filter'">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="font-weight: 700; font-size: 0.95rem; color: #1f2937;">Preset Styles</label>
+                <button type="button" (click)="resetFilters()" style="background: none; border: none; color: #21914c; font-weight: 600; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 4px;">
+                  <ion-icon name="refresh-outline"></ion-icon> Reset
+                </button>
+              </div>
+
+              <!-- Presets Row -->
+              <div class="filter-presets">
+                <button type="button" class="preset-chip" [class.active]="activePreset === 'Normal'" (click)="applyPresetFilter('Normal')">Normal</button>
+                <button type="button" class="preset-chip" [class.active]="activePreset === 'Vibrant'" (click)="applyPresetFilter('Vibrant')">Vibrant</button>
+                <button type="button" class="preset-chip" [class.active]="activePreset === 'Vintage'" (click)="applyPresetFilter('Vintage')">Vintage</button>
+                <button type="button" class="preset-chip" [class.active]="activePreset === 'Noir'" (click)="applyPresetFilter('Noir')">B&amp;W Noir</button>
+                <button type="button" class="preset-chip" [class.active]="activePreset === 'Warm Glow'" (click)="applyPresetFilter('Warm Glow')">Warm Glow</button>
+                <button type="button" class="preset-chip" [class.active]="activePreset === 'Cool Crisp'" (click)="applyPresetFilter('Cool Crisp')">Cool Crisp</button>
+              </div>
+
+              <!-- Color Tuning Sliders -->
+              <div class="slider-label-header">
+                <span>Brightness</span>
+                <span class="slider-value-badge">{{ filterBrightness }}%</span>
+              </div>
+              <ion-range [min]="0" [max]="200" [(ngModel)]="filterBrightness" (ionChange)="onFilterChange()" color="success"></ion-range>
+
+              <div class="slider-label-header">
+                <span>Contrast</span>
+                <span class="slider-value-badge">{{ filterContrast }}%</span>
+              </div>
+              <ion-range [min]="0" [max]="200" [(ngModel)]="filterContrast" (ionChange)="onFilterChange()" color="success"></ion-range>
+
+              <div class="slider-label-header">
+                <span>Saturation</span>
+                <span class="slider-value-badge">{{ filterSaturation }}%</span>
+              </div>
+              <ion-range [min]="0" [max]="200" [(ngModel)]="filterSaturation" (ionChange)="onFilterChange()" color="success"></ion-range>
+
+              <div class="slider-label-header">
+                <span>Grayscale</span>
+                <span class="slider-value-badge">{{ filterGrayscale }}%</span>
+              </div>
+              <ion-range [min]="0" [max]="100" [(ngModel)]="filterGrayscale" (ionChange)="onFilterChange()" color="success"></ion-range>
+
+              <div class="slider-label-header">
+                <span>Sepia</span>
+                <span class="slider-value-badge">{{ filterSepia }}%</span>
+              </div>
+              <ion-range [min]="0" [max]="100" [(ngModel)]="filterSepia" (ionChange)="onFilterChange()" color="success"></ion-range>
+
+              <div class="slider-label-header">
+                <span>Soft Blur</span>
+                <span class="slider-value-badge">{{ filterBlur }}px</span>
+              </div>
+              <ion-range [min]="0" [max]="10" [(ngModel)]="filterBlur" (ionChange)="onFilterChange()" color="success"></ion-range>
+            </div>
+
             <!-- Output Format (Common) -->
             <ion-item class="ion-margin-top" *ngIf="activeMode !== 'convert'">
               <ion-label>Output Format</ion-label>
@@ -158,9 +251,10 @@
               </ion-select>
             </ion-item>
 
-            <ion-button expand="block" class="ion-margin-top" (click)="processImage()"
+            <ion-button expand="block" class="ion-margin-top" [disabled]="isProcessing" (click)="processImage()"
               style="--background: #21914c;color:white">
-              {{ getActionLabel() }}
+              <ion-spinner *ngIf="isProcessing" name="crescent" slot="start" style="width: 20px; height: 20px;"></ion-spinner>
+              {{ isProcessing ? processingMessage : getActionLabel() }}
             </ion-button>
 
           </ion-card-content>
@@ -169,4 +263,5 @@
       </ion-col>
     </ion-row>
   </ion-grid>
+  </div>
 </ion-content>
